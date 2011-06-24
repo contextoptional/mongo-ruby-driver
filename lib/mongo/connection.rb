@@ -19,6 +19,8 @@
 require 'set'
 require 'socket'
 require 'thread'
+require 'benchmark'
+require 'json'
 
 module Mongo
 
@@ -608,8 +610,9 @@ module Mongo
     # and payload.
     # TODO: Not sure if this should take a block.
     def instrument(name, payload = {}, &blk)
-      res = yield
-      log_operation(name, payload)
+      res = nil
+      duration = 1000 * Benchmark.realtime { res = yield }
+      log_operation(name, payload, duration)
       res
     end
 
@@ -683,14 +686,15 @@ module Mongo
 
     ## Logging methods
 
-    def log_operation(name, payload)
+    def log_operation(name, payload, duration)
       return unless @logger
-      msg = "#{payload[:database]}['#{payload[:collection]}'].#{name}("
-      msg += payload.values_at(:selector, :document, :documents, :fields ).compact.map(&:inspect).join(', ') + ")"
+      msg = "db.#{payload[:collection]}.#{name}("
+      # json *only* used for logging - wish there was a better way
+      msg += payload.values_at(:selector, :document, :documents, :fields ).compact.map(&:to_json).join(', ') + ")"
       msg += ".skip(#{payload[:skip]})"  if payload[:skip]
       msg += ".limit(#{payload[:limit]})"  if payload[:limit]
       msg += ".sort(#{payload[:order]})"  if payload[:order]
-      @logger.debug "MONGODB #{msg}"
+      @logger.debug("MongoDB %s (%.1fms)  %s" % [payload[:database], duration, msg])
     end
 
     private

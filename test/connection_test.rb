@@ -135,7 +135,8 @@ class TestConnection < Test::Unit::TestCase
     logger = Logger.new(output)
     logger.level = Logger::DEBUG
     connection = standard_connection(:logger => logger).db(MONGO_TEST_DB)
-    assert output.string.include?("admin['$cmd'].find")
+    assert output.string.include?("db.$cmd.find")
+    assert output.string.include?("MongoDB admin")
   end
 
   def test_connection_logger
