@@ -610,10 +610,14 @@ module Mongo
     # and payload.
     # TODO: Not sure if this should take a block.
     def instrument(name, payload = {}, &blk)
-      res = nil
-      duration = 1000 * Benchmark.realtime { res = yield }
-      log_operation(name, payload, duration)
-      res
+      if @logger
+        res = nil
+        duration = 1000 * Benchmark.realtime { res = yield }
+        log_operation(name, payload, duration)
+        res
+      else
+        yield
+      end
     end
 
     protected
@@ -687,7 +691,6 @@ module Mongo
     ## Logging methods
 
     def log_operation(name, payload, duration)
-      return unless @logger
       msg = "db.#{payload[:collection]}.#{name}("
       # json *only* used for logging - wish there was a better way
       msg += payload.values_at(:selector, :document, :documents, :fields ).compact.map(&:to_json).join(', ') + ")"
